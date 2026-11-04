@@ -8,7 +8,7 @@
  * (tire pressure, brake fluid, washer fluid) as orange markers, plus lock, battery, range,
  * charging, climate and defrost chips. Works with your own GLB model or a built-in demo car.
  */
-const CARD_VERSION = '1.1.1';
+const CARD_VERSION = '1.1.2';
 const THREE_VERSION = '0.170.0';
 const CDN = `https://cdn.jsdelivr.net/npm/three@${THREE_VERSION}`;
 
@@ -347,23 +347,22 @@ class Car3DCard extends HTMLElement {
     holder.position.set(-ctr.x, -box.min.y, -ctr.z);
     box = new T.Box3().setFromObject(holder); const dim = box.getSize(new T.Vector3());
     scene.add(holder);
-    if (c.lights) {   // glow of head-/daytime-/tail lights
-      const cv = document.createElement('canvas'); cv.width = cv.height = 64; const g = cv.getContext('2d');
-      const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-      gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.3, 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
-      g.fillStyle = gr; g.fillRect(0, 0, 64, 64); const tex = new T.CanvasTexture(cv);
-      const glow = { drl: [0xdfeaff, 0.12, 60, 0.16], taillight: [0xff2a18, 0.1, 400, 0.07] };
-      holder.updateMatrixWorld(true); const v = new T.Vector3(); const add = [];
+    if (c.lights) {   // soft glow around head-/daytime-/tail lights: translucent shells that follow the lamp surface
+      const glow = { drl: 0xdfeaff, taillight: 0xff2a18 };
+      const shells = [[0.006, 0.45], [0.016, 0.2], [0.032, 0.08]];   // [offset in m, opacity]
+      holder.updateMatrixWorld(true); const ws = new T.Vector3(); const add = [];
       holder.traverse((o) => {
-        const gl = o.isMesh && glow[o.material && o.material.name]; if (!gl) return;
-        const pos = o.geometry.attributes.position; const n = gl[2]; const step = Math.max(1, Math.floor(pos.count / n));
-        const mat = new T.SpriteMaterial({ map: tex, color: gl[0], blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: gl[3], toneMapped: false });
-        for (let i = 0; i < pos.count; i += step) {
-          v.fromBufferAttribute(pos, i); o.localToWorld(v);
-          const sp = new T.Sprite(mat); sp.position.copy(v); sp.position.z += Math.sign(v.z) * 0.06; sp.scale.setScalar(gl[1]); add.push(sp);
+        const col = o.isMesh && glow[o.material && o.material.name]; if (!col || !o.geometry.attributes.normal) return;
+        o.getWorldScale(ws); const k = 1 / Math.max(ws.x, ws.y, ws.z, 1e-6);
+        for (const [off, op] of shells) {
+          const m = new T.MeshBasicMaterial({ color: col, transparent: true, opacity: op, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide, toneMapped: false });
+          const d = off * k;
+          m.onBeforeCompile = (sh) => { sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>\n transformed += normalize(normal) * ${d.toFixed(6)};`); };
+          m.customProgramCacheKey = () => 'glow' + d.toFixed(6);
+          const sh = new T.Mesh(o.geometry, m); sh.renderOrder = 2; add.push([o, sh]);
         }
       });
-      add.forEach((sp) => holder.worldToLocal(sp.position) && holder.add(sp));
+      add.forEach(([o, sh]) => o.add(sh));
     }
     if (c.reflection) { const mirror = holder.clone(); mirror.scale.y *= -1; mirror.position.y = -mirror.position.y; scene.add(mirror); }
     shadow.scale.set(dim.x * 1.6, dim.z * 1.3, 1);
