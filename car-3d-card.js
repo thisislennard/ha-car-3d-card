@@ -121,8 +121,8 @@ const MATS = (T, paint) => ({
   trim_gloss: () => new T.MeshPhysicalMaterial({ color: 0x050506, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.05 }),
   chrome:     () => new T.MeshStandardMaterial({ color: 0xdfe2e6, metalness: 1, roughness: 0.08 }),
   taillight:  () => new T.MeshPhysicalMaterial({ color: 0x8a0a0a, emissive: 0xff1208, emissiveIntensity: 2.2, roughness: 0.1, clearcoat: 1 }),
-  headlight:  () => new T.MeshPhysicalMaterial({ color: 0x9aa0a8, emissive: 0xdfe9ff, emissiveIntensity: 0.25, metalness: 0.6, roughness: 0.08, clearcoat: 1 }),
-  drl:        () => new T.MeshStandardMaterial({ color: 0xffffff, emissive: 0xf2f7ff, emissiveIntensity: 3 }),
+  headlight:  () => new T.MeshPhysicalMaterial({ color: 0xffffff, metalness: 0, roughness: 0.02, transparent: true, opacity: 0.18, clearcoat: 1, depthWrite: false }),  // clear lens
+  drl:        () => new T.MeshStandardMaterial({ color: 0xffffff, emissive: 0xf2f7ff, emissiveIntensity: 4 }),
 });
 
 /* Studio environment for reflections: dark room with soft boxes and light strips
@@ -168,7 +168,7 @@ function buildDemoCar(T) {
     const tire = new T.Mesh(new T.TorusGeometry(0.27, 0.1, 16, 48), mat('tire')); tire.rotation.y = Math.PI / 2; tire.scale.set(1, 1, 1.25); tire.position.set(x, 0.37, z); g.add(tire);
     const rim = new T.Mesh(new T.CylinderGeometry(0.25, 0.25, 0.22, 32), mat('rim')); rim.rotation.z = Math.PI / 2; rim.position.set(x, 0.37, z); g.add(rim);
   }
-  const head = new T.Mesh(new T.BoxGeometry(1.4, 0.04, 0.06), mat('headlight')); head.position.set(0, 0.73, 2.21); g.add(head);
+  const head = new T.Mesh(new T.BoxGeometry(1.4, 0.04, 0.06), mat('drl')); head.position.set(0, 0.73, 2.21); g.add(head);
   const tail = new T.Mesh(new T.BoxGeometry(1.7, 0.05, 0.06), mat('taillight')); tail.position.set(0, 0.88, -2.3); g.add(tail);
   return g;
 }

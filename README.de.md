@@ -149,7 +149,7 @@ entities:
 | `markers` | – | Einzelne Marker verschieben, siehe [Marker-Positionen](#marker-positionen) |
 | `recolor` | `false` bei eigenen Modellen | `true`: Materialien mit den Namen `paint`, `glass`, `tire`, `rim`, `rim_face`, `brake`, `caliper`, `interior`, `trim`, `trim_gloss`, `chrome`, `headlight`, `drl`, `taillight` werden durch eingebaute ersetzt |
 | `paint_color` | `#4f5256` | Lackfarbe beim Umfärben (Metallic-Grau mit Klarlack) |
-| `lights` | `true` | Leuchteffekt für Tagfahrlicht (`drl`) und Rückleuchten (`taillight`) – benötigt `recolor` |
+| `lights` | `true` | Leuchteffekt für LED-Elemente der Scheinwerfer (`drl`) und Rückleuchten (`taillight`) – benötigt `recolor` |
 | `background` | `studio` | Start-Hintergrund: `studio`, `light` oder `night`. Jeder Browser merkt sich die letzte Wahl per 🎨 |
 | `reflection` | `true` | Spiegelung im Boden (`false` = etwas schneller auf alten Handys) |
 | `auto_rotate` | `true` | Auto dreht sich langsam; stoppt beim Anfassen und läuft nach 20 s weiter |
@@ -243,7 +243,7 @@ Die Standardpositionen stehen in der [englischen README](README.md#marker-positi
 ### Umfärben
 
 Heruntergeladene Modelle behalten ihre eigenen Materialien und Farben. Benennst du die Materialien in Blender `paint`,
-`glass`, `tire`, `rim`, `rim_face`, `brake`, `caliper`, `interior`, `trim`, `trim_gloss`, `chrome`, `headlight`, `drl` und `taillight`, kann die Karte eigene Materialien verwenden und
+`glass`, `tire`, `rim`, `rim_face`, `brake`, `caliper`, `interior`, `trim`, `trim_gloss`, `chrome`, `headlight` (klares Scheinwerferglas), `drl` (leuchtende LEDs) und `taillight`, kann die Karte eigene Materialien verwenden und
 du wählst die Lackfarbe:
 
 ```yaml

@@ -153,7 +153,7 @@ entities:
 | `markers` | – | Move single markers, see [Marker positions](#marker-positions) |
 | `recolor` | `false` for own models | `true`: replace materials named `paint`, `glass`, `tire`, `rim`, `rim_face`, `brake`, `caliper`, `interior`, `trim`, `trim_gloss`, `chrome`, `headlight`, `drl`, `taillight` with built-in ones |
 | `paint_color` | `#4f5256` | Paint colour when recolouring (metallic grey with clear coat) |
-| `lights` | `true` | Glow effect for daytime running lights (`drl`) and tail lights (`taillight`) – needs `recolor` |
+| `lights` | `true` | Glow effect for headlight LED elements (`drl`) and tail lights (`taillight`) – needs `recolor` |
 | `background` | `studio` | Default background: `studio`, `light` or `night`. Each browser remembers the last one picked with 🎨 |
 | `reflection` | `true` | Mirror the car in the floor (`false` = slightly faster on old phones) |
 | `auto_rotate` | `true` | Slowly rotate the car; stops while you touch it and resumes after 20 s |
@@ -257,7 +257,7 @@ Default positions:
 ### Recolouring
 
 Most downloaded models keep their own materials and colours. If you name the materials of your model in Blender
-`paint`, `glass`, `tire`, `rim`, `rim_face`, `brake`, `caliper`, `interior`, `trim`, `trim_gloss`, `chrome`, `headlight`, `drl` and `taillight`, you can let the card apply its
+`paint`, `glass`, `tire`, `rim`, `rim_face`, `brake`, `caliper`, `interior`, `trim`, `trim_gloss`, `chrome`, `headlight` (clear lens), `drl` (glowing LEDs) and `taillight`, you can let the card apply its
 materials and choose the paint colour:
 
 ```yaml
