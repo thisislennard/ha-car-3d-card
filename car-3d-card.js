@@ -8,7 +8,7 @@
  * (tire pressure, brake fluid, washer fluid) as orange markers, plus lock, battery, range,
  * charging, climate and defrost chips. Works with your own GLB model or a built-in demo car.
  */
-const CARD_VERSION = '1.1.0';
+const CARD_VERSION = '1.1.1';
 const THREE_VERSION = '0.170.0';
 const CDN = `https://cdn.jsdelivr.net/npm/three@${THREE_VERSION}`;
 
@@ -108,15 +108,16 @@ const THEME_KEYS = Object.keys(THEMES);
 
 /* Optional material overrides by material name (used by the demo car and by models whose
    materials are named like this). Other materials of your model are kept as they are. */
-const MATS = (T, paint) => ({
+const MATS = (T, paint, env) => ({
   paint:      () => new T.MeshPhysicalMaterial({ color: paint, metalness: 0.3, roughness: 0.38, clearcoat: 0.8, clearcoatRoughness: 0.1, envMapIntensity: 1.25 }),
-  glass:      () => new T.MeshPhysicalMaterial({ color: 0x050608, metalness: 0.2, roughness: 0.02, transparent: true, opacity: 0.84, clearcoat: 1, clearcoatRoughness: 0, envMapIntensity: 1.1 }),
+  // glass: unlit + environment reflection only (lit glass showed a bright blob from the studio lamps)
+  glass:      () => new T.MeshBasicMaterial({ color: 0x07090c, envMap: env || null, reflectivity: 0.32, combine: T.MixOperation, transparent: true, opacity: 0.88 }),
   tire:       () => new T.MeshStandardMaterial({ color: 0x141414, roughness: 0.82 }),
   rim:        () => new T.MeshStandardMaterial({ color: 0x1c1d20, metalness: 0.9, roughness: 0.32 }),
   rim_face:   () => new T.MeshStandardMaterial({ color: 0xb4b8bd, metalness: 1, roughness: 0.22 }),
-  brake:      () => new T.MeshStandardMaterial({ color: 0x55575a, metalness: 0.9, roughness: 0.5 }),
-  caliper:    () => new T.MeshPhysicalMaterial({ color: 0xb8e600, roughness: 0.35, clearcoat: 0.6 }),
-  interior:   () => new T.MeshStandardMaterial({ color: 0x18181b, roughness: 0.8 }),
+  brake:      () => new T.MeshStandardMaterial({ color: 0x55575a, metalness: 0.9, roughness: 0.5, side: T.DoubleSide }),
+  caliper:    () => new T.MeshPhysicalMaterial({ color: 0xb8e600, roughness: 0.35, clearcoat: 0.6, side: T.DoubleSide }),
+  interior:   () => new T.MeshStandardMaterial({ color: 0x1b1b1e, roughness: 0.85, side: T.DoubleSide }),
   trim:       () => new T.MeshStandardMaterial({ color: 0x0d0d0f, roughness: 0.6, metalness: 0.1 }),
   trim_gloss: () => new T.MeshPhysicalMaterial({ color: 0x050506, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.05 }),
   chrome:     () => new T.MeshStandardMaterial({ color: 0xdfe2e6, metalness: 1, roughness: 0.08 }),
@@ -331,7 +332,7 @@ class Car3DCard extends HTMLElement {
     } else {
       car = buildDemoCar(T);
     }
-    const M = MATS(T, new T.Color(c.paint_color));
+    const M = MATS(T, new T.Color(c.paint_color), scene.environment);
     const recolor = c.recolor === null ? !c.model : !!c.recolor;  // demo car: always; own model: only if `recolor: true`
     car.traverse((o) => {
       if (!o.isMesh) return;
@@ -351,7 +352,7 @@ class Car3DCard extends HTMLElement {
       const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
       gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.3, 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
       g.fillStyle = gr; g.fillRect(0, 0, 64, 64); const tex = new T.CanvasTexture(cv);
-      const glow = { drl: [0xdfeaff, 0.16, 36, 0.22], taillight: [0xff2a18, 0.17, 48, 0.24] };
+      const glow = { drl: [0xdfeaff, 0.12, 60, 0.16], taillight: [0xff2a18, 0.1, 400, 0.07] };
       holder.updateMatrixWorld(true); const v = new T.Vector3(); const add = [];
       holder.traverse((o) => {
         const gl = o.isMesh && glow[o.material && o.material.name]; if (!gl) return;
