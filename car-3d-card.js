@@ -8,7 +8,7 @@
  * (tire pressure, brake fluid, washer fluid) as orange markers, plus lock, battery, range,
  * charging, climate and defrost chips. Works with your own GLB model or a built-in demo car.
  */
-const CARD_VERSION = '1.1.2';
+const CARD_VERSION = '1.2.0';
 const THREE_VERSION = '0.170.0';
 const CDN = `https://cdn.jsdelivr.net/npm/three@${THREE_VERSION}`;
 
@@ -39,6 +39,20 @@ const PARTS = [
   { key: 'washer_fluid',      kia: 'binary_sensor.{p}_washer_fluid_warning',      pos: [-0.39, 0.61, 0.75], warn: true },
 ];
 
+/* Demo / show mode: display-only overrides, nothing is written to Home Assistant. */
+const SHOW_SCENES = [
+  { lock: 'locked' },
+  { front_left_door: 'on', lock: 'unlocked' },
+  { rear_left_door: 'on', rear_right_door: 'on', lock: 'unlocked' },
+  { trunk: 'on', lock: 'unlocked' },
+  { front_right_window: 'on', front_left_window: 'on' },
+  { tire_front_left: 'on', tire_rear_right: 'on' },
+  { washer_fluid: 'on', brake_fluid: 'on' },
+  { charge_port: 'on', plug: 'on', charging: 'on' },
+  { climate: 'on', defrost: 'on', rear_defrost: 'on' },
+  { hood: 'on', lock: 'unlocked' },
+];
+
 /* Status entities (chips below the model). */
 const STATUS = {
   lock:         'lock.{p}_door_lock',
@@ -64,6 +78,9 @@ const I18N = {
     defrost: 'Windshield heating', rearDefrost: 'Rear window heating', refresh: 'Refresh now', refreshing: 'Refreshing …',
     confirm: 'Wake up the car and request fresh data? (uses a little 12 V battery)', updated: 'Updated: ',
     demo: 'Demo car – set `model:` to use your own 3D model',
+    showStart: 'Start demo', showStop: 'Stop demo', showNote: 'Demo – simulated, no real data is changed',
+    scenes: ['Everything closed & locked', 'Driver door open', 'Rear doors open', 'Trunk open', 'Window open',
+      'Tire pressure low', 'Washer & brake fluid', 'Charging', 'Climate & defrost', 'Hood open'],
     names: {
       front_left_door: 'Front left door', front_right_door: 'Front right door', rear_left_door: 'Rear left door',
       rear_right_door: 'Rear right door', front_left_window: 'Front left window', front_right_window: 'Front right window',
@@ -82,6 +99,9 @@ const I18N = {
     defrost: 'Frontscheibe heizt', rearDefrost: 'Heckscheibe heizt', refresh: 'Jetzt aktualisieren', refreshing: 'Wird abgefragt …',
     confirm: 'Das Auto jetzt aufwecken und Daten abfragen? (kostet etwas 12-V-Batterie)', updated: 'Stand: ',
     demo: 'Demo-Auto – mit `model:` dein eigenes 3D-Modell einbinden',
+    showStart: 'Vorführung starten', showStop: 'Vorführung stoppen', showNote: 'Vorführung – simuliert, echte Werte bleiben unverändert',
+    scenes: ['Alles zu & verriegelt', 'Fahrertür offen', 'Hintere Türen offen', 'Kofferraum offen', 'Fenster offen',
+      'Reifendruck zu niedrig', 'Wischwasser & Bremsflüssigkeit', 'Laden', 'Klima & Scheibenheizung', 'Motorhaube offen'],
     names: {
       front_left_door: 'Tür vorne links', front_right_door: 'Tür vorne rechts', rear_left_door: 'Tür hinten links',
       rear_right_door: 'Tür hinten rechts', front_left_window: 'Fenster vorne links', front_right_window: 'Fenster vorne rechts',
@@ -180,7 +200,7 @@ class Car3DCard extends HTMLElement {
   setConfig(config) {
     if (!config) throw new Error('Invalid configuration');
     this._cfg = Object.assign({
-      title: '', model: '', model_length: 4.7, model_rotation: 0, paint_color: '#4f5256', recolor: null, lights: true,
+      title: '', model: '', model_length: 4.7, model_rotation: 0, paint_color: '#4f5256', recolor: null, lights: true, demo: false, demo_interval: 4,
       height: '62vh', background: 'studio', auto_rotate: true, reflection: true, prefix: '', entities: {}, markers: {},
     }, config);
     if (this._root) { this._root.innerHTML = ''; this._root = null; this._built = false; }
@@ -194,7 +214,37 @@ class Car3DCard extends HTMLElement {
     if (key in e) return e[key] || null;
     return this._cfg.prefix && tpl ? tpl.replace('{p}', this._cfg.prefix) : null;
   }
-  _st(id) { const s = id && this._hass && this._hass.states[id]; return s ? s.state : undefined; }
+  _st(id) {
+    if (this._show && id && id in this._show) return this._show[id];
+    const s = id && this._hass && this._hass.states[id]; return s ? s.state : undefined;
+  }
+  _showScene(i) {
+    const sc = SHOW_SCENES[i % SHOW_SCENES.length], o = {};
+    for (const p of PARTS) { const e = this._ent(p.key, p.kia); if (e) o[e] = sc[p.key] || 'off'; }
+    for (const k of ['lock', 'plug', 'charging', 'climate', 'defrost', 'rear_defrost']) {
+      const e = this._ent(k, STATUS[k]); if (e) o[e] = sc[k] || (k === 'lock' ? 'locked' : 'off');
+    }
+    this._show = o; this._showIdx = i;
+    const lbl = this._root && this._root.querySelector('.showlbl');
+    if (lbl) lbl.textContent = `${(i % SHOW_SCENES.length) + 1}/${SHOW_SCENES.length} · ${this._t.scenes[i % SHOW_SCENES.length]}`;
+    this._updateStatus();
+  }
+  _toggleShow(on) {
+    clearInterval(this._showTimer); const t = this._t;
+    const btn = this._root.querySelector('.showbtn');
+    if (on) {
+      this._showScene(0);
+      this._showTimer = setInterval(() => this._showScene(this._showIdx + 1), (Number(this._cfg.demo_interval) || 4) * 1000);
+      if (this._ctl) this._ctl.autoRotate = true;
+    } else {
+      this._show = null; this._updateStatus();
+      const lbl = this._root.querySelector('.showlbl'); if (lbl) lbl.textContent = t.showNote;
+      if (this._ctl) this._ctl.autoRotate = !!this._cfg.auto_rotate;
+    }
+    if (btn) { btn.classList.toggle('on', on); btn.querySelector('span').textContent = on ? t.showStop : t.showStart;
+      btn.querySelector('ha-icon').setAttribute('icon', on ? 'mdi:stop' : 'mdi:play'); }
+  }
+  disconnectedCallback() { clearInterval(this._showTimer); }
   get _t() { const l = (this._hass && this._hass.language || 'en').slice(0, 2); return I18N[l] || I18N.en; }
 
   set hass(hass) {
@@ -230,6 +280,11 @@ class Car3DCard extends HTMLElement {
         .rbtn{all:unset;cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:14px;font-size:14px;
           background:var(--primary-color);color:var(--text-primary-color,#fff);margin-left:auto}
         .rbtn[disabled]{opacity:.5;cursor:default}
+        .showbar{display:flex;align-items:center;gap:12px;padding:0 16px 16px;flex-wrap:wrap}
+        .showbtn{all:unset;cursor:pointer;display:flex;align-items:center;gap:6px;padding:10px 18px;border-radius:14px;font-size:15px;font-weight:500;
+          background:var(--success-color,#43a047);color:#fff}
+        .showbtn.on{background:var(--error-color,#e53935)}
+        .showlbl{font-size:13px;color:var(--secondary-text-color)}
         .demo{position:absolute;bottom:28px;width:100%;text-align:center;font-size:11px;color:var(--c3d-sub);pointer-events:none}
       </style>
       <ha-card>
@@ -242,7 +297,10 @@ class Car3DCard extends HTMLElement {
         </div>
         <div class="open"></div>
         <div class="panel"></div>
+        ${c.demo ? `<div class="showbar"><button class="showbtn"><ha-icon icon="mdi:play"></ha-icon><span>${t.showStart}</span></button><span class="showlbl">${t.showNote}</span></div>` : ''}
       </ha-card>`;
+    const sb = this._root.querySelector('.showbtn');
+    if (sb) sb.addEventListener('click', () => this._toggleShow(!this._showTimer || !this._show));
     this._root.querySelector('.title').textContent = c.title || '';
     this._stage = this._root.querySelector('.stage');
     let saved; try { saved = localStorage.getItem('car-3d-card-bg'); } catch (e) { /* no storage */ }
@@ -319,7 +377,7 @@ class Car3DCard extends HTMLElement {
     const ctl = new OrbitControls(cam, r.domElement);
     ctl.target.set(0, 0.7, 0); ctl.enableDamping = true; ctl.enablePan = false;
     ctl.minDistance = 3.6; ctl.maxDistance = 13; ctl.maxPolarAngle = Math.PI * 0.49;
-    ctl.autoRotate = !!c.auto_rotate; ctl.autoRotateSpeed = 0.6;
+    ctl.autoRotate = !!c.auto_rotate; ctl.autoRotateSpeed = 0.6; this._ctl = ctl;
     ctl.addEventListener('start', () => { ctl.autoRotate = false; clearTimeout(this._ar); });
     ctl.addEventListener('end', () => { if (c.auto_rotate) this._ar = setTimeout(() => { ctl.autoRotate = true; }, 20000); });
 
@@ -440,7 +498,7 @@ class Car3DCard extends HTMLElement {
     if (st(E('climate')) === 'on') chips.push(chip('mdi:air-conditioner', t.climate, 'ok'));
     if (st(E('defrost')) === 'on') chips.push(chip('mdi:car-defrost-front', t.defrost, 'ok'));
     if (st(E('rear_defrost')) === 'on') chips.push(chip('mdi:car-defrost-rear', t.rearDefrost, 'ok'));
-    const refresh = E('refresh'); const hasRefresh = refresh && st(refresh) !== undefined;
+    const refresh = E('refresh'); const hasRefresh = !this._show && refresh && st(refresh) !== undefined;
     if (hasRefresh) chips.push(`<button class="rbtn"><ha-icon icon="mdi:refresh"></ha-icon><span>${t.refresh}</span></button>`);
     const html = chips.join('');
     if (html !== this._lastPanel) {

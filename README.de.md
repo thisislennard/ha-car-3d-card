@@ -150,6 +150,8 @@ entities:
 | `recolor` | `false` bei eigenen Modellen | `true`: Materialien mit den Namen `paint`, `glass`, `tire`, `rim`, `rim_face`, `brake`, `caliper`, `interior`, `trim`, `trim_gloss`, `chrome`, `headlight`, `drl`, `taillight` werden durch eingebaute ersetzt |
 | `paint_color` | `#4f5256` | Lackfarbe beim Umfärben (Metallic-Grau mit Klarlack) |
 | `lights` | `true` | Leuchteffekt für LED-Elemente der Scheinwerfer (`drl`) und Rückleuchten (`taillight`) – benötigt `recolor` |
+| `demo` | `false` | `true`: zeigt unter dem Auto einen Knopf **Vorführung starten/stoppen**. Er spielt Szenen ab (Tür offen, Reifendruck, Laden …). Rein simuliert: Es wird nichts an Home Assistant gesendet, „Jetzt aktualisieren“ ist währenddessen ausgeblendet |
+| `demo_interval` | `4` | Sekunden pro Szene |
 | `background` | `studio` | Start-Hintergrund: `studio`, `light` oder `night`. Jeder Browser merkt sich die letzte Wahl per 🎨 |
 | `reflection` | `true` | Spiegelung im Boden (`false` = etwas schneller auf alten Handys) |
 | `auto_rotate` | `true` | Auto dreht sich langsam; stoppt beim Anfassen und läuft nach 20 s weiter |

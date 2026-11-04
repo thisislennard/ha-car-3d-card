@@ -154,6 +154,8 @@ entities:
 | `recolor` | `false` for own models | `true`: replace materials named `paint`, `glass`, `tire`, `rim`, `rim_face`, `brake`, `caliper`, `interior`, `trim`, `trim_gloss`, `chrome`, `headlight`, `drl`, `taillight` with built-in ones |
 | `paint_color` | `#4f5256` | Paint colour when recolouring (metallic grey with clear coat) |
 | `lights` | `true` | Glow effect for headlight LED elements (`drl`) and tail lights (`taillight`) – needs `recolor` |
+| `demo` | `false` | `true`: adds a **Start/Stop demo** button below the car that cycles through scenes (door open, tire pressure, charging …). Display only – nothing is sent to Home Assistant, the refresh button is hidden while it runs |
+| `demo_interval` | `4` | Seconds per scene |
 | `background` | `studio` | Default background: `studio`, `light` or `night`. Each browser remembers the last one picked with 🎨 |
 | `reflection` | `true` | Mirror the car in the floor (`false` = slightly faster on old phones) |
 | `auto_rotate` | `true` | Slowly rotate the car; stops while you touch it and resumes after 20 s |
