@@ -8,7 +8,7 @@
  * (tire pressure, brake fluid, washer fluid) as orange markers, plus lock, battery, range,
  * charging, climate and defrost chips. Works with your own GLB model or a built-in demo car.
  */
-const CARD_VERSION = '1.0.0';
+const CARD_VERSION = '1.1.0';
 const THREE_VERSION = '0.170.0';
 const CDN = `https://cdn.jsdelivr.net/npm/three@${THREE_VERSION}`;
 
@@ -109,15 +109,39 @@ const THEME_KEYS = Object.keys(THEMES);
 /* Optional material overrides by material name (used by the demo car and by models whose
    materials are named like this). Other materials of your model are kept as they are. */
 const MATS = (T, paint) => ({
-  paint:     () => new T.MeshPhysicalMaterial({ color: paint, metalness: 0.25, roughness: 0.72, clearcoat: 0.1, clearcoatRoughness: 0.8 }),
-  glass:     () => new T.MeshPhysicalMaterial({ color: 0x07090b, metalness: 0, roughness: 0.05, transparent: true, opacity: 0.62, clearcoat: 1 }),
-  tire:      () => new T.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 }),
-  rim:       () => new T.MeshStandardMaterial({ color: 0x2a2b2e, metalness: 0.85, roughness: 0.35 }),
-  interior:  () => new T.MeshStandardMaterial({ color: 0x141416, roughness: 0.85 }),
-  trim:      () => new T.MeshStandardMaterial({ color: 0x0e0e10, roughness: 0.55, metalness: 0.1 }),
-  taillight: () => new T.MeshStandardMaterial({ color: 0x5a0606, emissive: 0x300000, roughness: 0.25 }),
-  headlight: () => new T.MeshStandardMaterial({ color: 0xd8dadd, emissive: 0xffffff, emissiveIntensity: 0.25, roughness: 0.15 }),
+  paint:      () => new T.MeshPhysicalMaterial({ color: paint, metalness: 0.3, roughness: 0.38, clearcoat: 0.8, clearcoatRoughness: 0.1, envMapIntensity: 1.25 }),
+  glass:      () => new T.MeshPhysicalMaterial({ color: 0x050608, metalness: 0.2, roughness: 0.02, transparent: true, opacity: 0.84, clearcoat: 1, clearcoatRoughness: 0, envMapIntensity: 1.1 }),
+  tire:       () => new T.MeshStandardMaterial({ color: 0x141414, roughness: 0.82 }),
+  rim:        () => new T.MeshStandardMaterial({ color: 0x1c1d20, metalness: 0.9, roughness: 0.32 }),
+  rim_face:   () => new T.MeshStandardMaterial({ color: 0xb4b8bd, metalness: 1, roughness: 0.22 }),
+  brake:      () => new T.MeshStandardMaterial({ color: 0x55575a, metalness: 0.9, roughness: 0.5 }),
+  caliper:    () => new T.MeshPhysicalMaterial({ color: 0xb8e600, roughness: 0.35, clearcoat: 0.6 }),
+  interior:   () => new T.MeshStandardMaterial({ color: 0x18181b, roughness: 0.8 }),
+  trim:       () => new T.MeshStandardMaterial({ color: 0x0d0d0f, roughness: 0.6, metalness: 0.1 }),
+  trim_gloss: () => new T.MeshPhysicalMaterial({ color: 0x050506, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.05 }),
+  chrome:     () => new T.MeshStandardMaterial({ color: 0xdfe2e6, metalness: 1, roughness: 0.08 }),
+  taillight:  () => new T.MeshPhysicalMaterial({ color: 0x8a0a0a, emissive: 0xff1208, emissiveIntensity: 2.2, roughness: 0.1, clearcoat: 1 }),
+  headlight:  () => new T.MeshPhysicalMaterial({ color: 0x9aa0a8, emissive: 0xdfe9ff, emissiveIntensity: 0.25, metalness: 0.6, roughness: 0.08, clearcoat: 1 }),
+  drl:        () => new T.MeshStandardMaterial({ color: 0xffffff, emissive: 0xf2f7ff, emissiveIntensity: 3 }),
 });
+
+/* Studio environment for reflections: dark room with soft boxes and light strips
+   (gives the paint those long "showroom" highlights). */
+function studioEnv(T) {
+  const sc = new T.Scene();
+  sc.add(new T.Mesh(new T.BoxGeometry(30, 14, 30), new T.MeshBasicMaterial({ color: 0x2b2e34, side: T.BackSide })));
+  const light = (w, h, x, y, z, i, ry = 0, rx = 0) => {
+    const m = new T.Mesh(new T.PlaneGeometry(w, h), new T.MeshBasicMaterial({ color: new T.Color(i, i, i), side: T.DoubleSide }));
+    m.position.set(x, y, z); m.rotation.set(rx, ry, 0); m.lookAt(0, y > 5 ? 0 : y, 0); sc.add(m);
+  };
+  light(10, 4, 0, 6.8, 0, 4.5);                 // overhead soft box
+  light(1.2, 9, -9, 3.5, 4, 5); light(1.2, 9, 9, 3.5, -4, 5);   // vertical strips
+  light(14, 0.6, 0, 2.2, -12, 4); light(14, 0.6, 0, 2.2, 12, 4); // horizon lines front/back
+  light(6, 3, 10, 4, 8, 1.6); light(6, 3, -10, 4, -8, 1.2);     // fill
+  const floor = new T.Mesh(new T.PlaneGeometry(30, 30), new T.MeshBasicMaterial({ color: 0x0b0c0e }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -0.01; sc.add(floor);
+  return sc;
+}
 
 /* Built-in demo car (simple crossover) – used when no `model:` is configured. */
 function buildDemoCar(T) {
@@ -155,7 +179,7 @@ class Car3DCard extends HTMLElement {
   setConfig(config) {
     if (!config) throw new Error('Invalid configuration');
     this._cfg = Object.assign({
-      title: '', model: '', model_length: 4.7, model_rotation: 0, paint_color: '#4f5256', recolor: null,
+      title: '', model: '', model_length: 4.7, model_rotation: 0, paint_color: '#4f5256', recolor: null, lights: true,
       height: '62vh', background: 'studio', auto_rotate: true, reflection: true, prefix: '', entities: {}, markers: {},
     }, config);
     if (this._root) { this._root.innerHTML = ''; this._root = null; this._built = false; }
@@ -245,7 +269,6 @@ class Car3DCard extends HTMLElement {
     const T = await import(`${CDN}/+esm`);
     const { GLTFLoader } = await import(`${CDN}/examples/jsm/loaders/GLTFLoader.js/+esm`);
     const { OrbitControls } = await import(`${CDN}/examples/jsm/controls/OrbitControls.js/+esm`);
-    const { RoomEnvironment } = await import(`${CDN}/examples/jsm/environments/RoomEnvironment.js/+esm`);
     const { MeshoptDecoder } = await import(`${CDN}/examples/jsm/libs/meshopt_decoder.module.js/+esm`);
     const { DRACOLoader } = await import(`${CDN}/examples/jsm/loaders/DRACOLoader.js/+esm`);
     const stage = this._stage;
@@ -254,7 +277,7 @@ class Car3DCard extends HTMLElement {
     r.toneMapping = T.ACESFilmicToneMapping; r.outputColorSpace = T.SRGBColorSpace;
     stage.prepend(r.domElement);
     const scene = new T.Scene();
-    scene.environment = new T.PMREMGenerator(r).fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environment = new T.PMREMGenerator(r).fromScene(studioEnv(T), 0.02).texture;
     const cam = new T.PerspectiveCamera(32, 1, 0.1, 100); cam.position.set(4.5, 2.1, 5.0);
 
     // lights
@@ -313,7 +336,7 @@ class Car3DCard extends HTMLElement {
     car.traverse((o) => {
       if (!o.isMesh) return;
       const name = (o.material && o.material.name) || '';
-      if (recolor && M[name]) o.material = M[name]();
+      if (recolor && M[name]) { o.material = M[name](); o.material.name = name; }
     });
     // normalize: rotate so the front faces +Z, scale to model_length, centre, put on the ground
     const holder = new T.Group(); holder.add(car); car.rotation.y = (Number(c.model_rotation) || 0) * Math.PI / 180;
@@ -323,6 +346,24 @@ class Car3DCard extends HTMLElement {
     holder.position.set(-ctr.x, -box.min.y, -ctr.z);
     box = new T.Box3().setFromObject(holder); const dim = box.getSize(new T.Vector3());
     scene.add(holder);
+    if (c.lights) {   // glow of head-/daytime-/tail lights
+      const cv = document.createElement('canvas'); cv.width = cv.height = 64; const g = cv.getContext('2d');
+      const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.3, 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, 64, 64); const tex = new T.CanvasTexture(cv);
+      const glow = { drl: [0xdfeaff, 0.16, 36, 0.22], taillight: [0xff2a18, 0.17, 48, 0.24] };
+      holder.updateMatrixWorld(true); const v = new T.Vector3(); const add = [];
+      holder.traverse((o) => {
+        const gl = o.isMesh && glow[o.material && o.material.name]; if (!gl) return;
+        const pos = o.geometry.attributes.position; const n = gl[2]; const step = Math.max(1, Math.floor(pos.count / n));
+        const mat = new T.SpriteMaterial({ map: tex, color: gl[0], blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: gl[3], toneMapped: false });
+        for (let i = 0; i < pos.count; i += step) {
+          v.fromBufferAttribute(pos, i); o.localToWorld(v);
+          const sp = new T.Sprite(mat); sp.position.copy(v); sp.position.z += Math.sign(v.z) * 0.06; sp.scale.setScalar(gl[1]); add.push(sp);
+        }
+      });
+      add.forEach((sp) => holder.worldToLocal(sp.position) && holder.add(sp));
+    }
     if (c.reflection) { const mirror = holder.clone(); mirror.scale.y *= -1; mirror.position.y = -mirror.position.y; scene.add(mirror); }
     shadow.scale.set(dim.x * 1.6, dim.z * 1.3, 1);
     ctl.target.set(0, dim.y * 0.45, 0);
